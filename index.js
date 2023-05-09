@@ -15,6 +15,7 @@ app.use(express.json());
 // Database credentials
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ww5yfzh.mongodb.net/?retryWrites=true&w=majority`;
 
+// Create a MongoClient
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -28,21 +29,28 @@ async function run() {
     // Connect the client
     await client.connect();
 
-    // Connection check
+    const coffeeCollection = client.db('coffeeDB').collection('coffee');
+
+    app.post('/coffee', async (req, res) => {
+      const coffee = req.body;
+      const result = await coffeeCollection.insertOne(coffee);
+      res.send(result);
+    });
+
+    // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("You successfully connected to MongoDB!");
   } finally {
-    await client.close();
+    // Ensures that the client will close when you finish/error
+    // await client.close();
   }
 }
 run().catch(console.dir);
 
-// Routes
-app.get('/', (req, res)=>{
-    res.send('Server is running...');
+app.get('/', (req, res) => {
+  res.send('Server is running...');
 });
 
-// Listening
-app.listen(port, ()=>{
-    console.log(`Server is running on port ${port}`);
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
