@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 // Port
 const port = process.env.PORT || 5000;
@@ -17,40 +17,79 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@clu
 
 // Create a MongoClient
 const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    }
 });
 
 async function run() {
-  try {
-    // Connect the client
-    await client.connect();
+    try {
+        // Connect the client
+        await client.connect();
+        const coffeeCollection = client.db('coffeeDB').collection('coffee');
 
-    const coffeeCollection = client.db('coffeeDB').collection('coffee');
+        app.get('/coffee', async (req, res) => {
+            const cursor = coffeeCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
+        });
 
-    app.post('/coffee', async (req, res) => {
-      const coffee = req.body;
-      const result = await coffeeCollection.insertOne(coffee);
-      res.send(result);
-    });
+        app.get('/coffee/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)}
+            const result = await coffeeCollection.findOne(query);
+            res.send(result);
+        });
+        
+        app.post('/coffee', async (req, res) => {
+            const coffee = req.body;
+            const result = await coffeeCollection.insertOne(coffee);
+            res.send(result);
+        });
 
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("You successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
-  }
+        app.put('/coffee/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedCoffee = req.body;
+            const filter = {_id: new ObjectId(id)};
+            const options = {upsert: true};
+            const updatedDoc = {
+                $set: {
+                    name: updatedCoffee.name,
+                    quantity: updatedCoffee.quantity,
+                    supplier: updatedCoffee.supplier,
+                    taste: updatedCoffee.taste,
+                    category: updatedCoffee.category,
+                    details: updatedCoffee.details,
+                    photo: updatedCoffee.photo
+                }
+            }
+            const result = await coffeeCollection.updateOne(filter, updatedDoc, options);
+            res.send(result);
+        });
+
+        app.delete('/coffee/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)};
+            const result = await coffeeCollection.deleteOne(query)
+            res.send(result);
+        });
+
+        // Send a ping to confirm a successful connection
+        await client.db("admin").command({ ping: 1 });
+        console.log("You successfully connected to MongoDB!");
+    } finally {
+        // Ensures that the client will close when you finish/error
+        // await client.close();
+    }
 }
 run().catch(console.dir);
 
 app.get('/', (req, res) => {
-  res.send('Server is running...');
+    res.send('Server is running...');
 });
 
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+    console.log(`Server is running on port ${port}`);
 });
